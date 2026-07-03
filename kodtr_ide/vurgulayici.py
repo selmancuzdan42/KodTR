@@ -97,10 +97,53 @@ class KodTRVurgulayici(_KuralliVurgulayici):
             (QRegularExpression(obek_desen), _bicim(RENKLER["obek"])))
 
 
-class PythonVurgulayici(_KuralliVurgulayici):
+# hedef dil başına (deyimler, sabitler, gömülüler)
+_HEDEF_KELIMELERI = {
+    "python": (
+        [k for k in keyword.kwlist if k not in ("True", "False", "None")],
+        ["True", "False", "None"],
+        sorted(_GOMULULER),
+    ),
+    "csharp": (
+        ["using", "class", "static", "void", "var", "dynamic", "if", "else",
+         "while", "for", "foreach", "in", "return", "break", "continue",
+         "new", "int", "double", "string", "bool", "params", "is"],
+        ["true", "false", "null"],
+        ["Console", "WriteLine", "Write", "ReadLine", "Math", "Convert",
+         "List", "SayıAl", "OndalıkAl", "MetinAl", "Yazdır", "Uzunluk"],
+    ),
+    "javascript": (
+        ["function", "let", "const", "var", "if", "else", "while", "for",
+         "of", "in", "return", "break", "continue", "new", "typeof",
+         "require"],
+        ["true", "false", "null", "undefined"],
+        ["console", "log", "Math", "Number", "String", "parseInt",
+         "process", "sayıAl", "ondalıkAl", "metinAl", "uzunluk"],
+    ),
+}
+
+
+class HedefVurgulayici(_KuralliVurgulayici):
+    """Canlı çeviri panelindeki hedef dil kodunu renklendirir."""
+
+    def __init__(self, belge, dil="python"):
+        self.dil = dil
+        super().__init__(belge)
+
     def _kurallari_kur(self):
-        sabitler = {"True", "False", "None"}
-        deyimler = [k for k in keyword.kwlist if k not in sabitler]
+        deyimler, sabitler, gomululer = _HEDEF_KELIMELERI[self.dil]
         self._kelime_kurali(deyimler, _bicim(RENKLER["deyim"], kalin=True))
         self._kelime_kurali(sabitler, _bicim(RENKLER["sabit"], kalin=True))
-        self._kelime_kurali(_GOMULULER, _bicim(RENKLER["gomulu"]))
+        self._kelime_kurali(gomululer, _bicim(RENKLER["gomulu"]))
+        if self.dil != "python":
+            self.kurallar.append(
+                (QRegularExpression(r"//[^\n]*"),
+                 _bicim(RENKLER["yorum"], italik=True)))
+            self.kurallar.append(
+                (QRegularExpression(r"`[^`\n]*`?"),
+                 _bicim(RENKLER["metin"])))
+
+
+# geriye uyumluluk: eski ad Python vurgulayıcısı olarak kalsın
+def PythonVurgulayici(belge):
+    return HedefVurgulayici(belge, "python")

@@ -1,8 +1,9 @@
 # KodTR
 
-Türkçe yazılan, Python'a çevrilen mini programlama dili — IDE'si ve komut
-satırı aracıyla birlikte. Pardus başta olmak üzere Debian tabanlı sistemler
-için `.deb` paketi olarak dağıtılır.
+Türkçe yazılan mini programlama dili — **Python, C# ve JavaScript**
+hedeflerine çevrilir. IDE'si ve komut satırı aracıyla birlikte gelir;
+Pardus başta olmak üzere Debian tabanlı sistemler için `.deb` paketi
+olarak dağıtılır.
 
 ```
 tanımla sayı1 = kullanıcıdan sayı al("Birinci sayı: ")
@@ -15,7 +16,7 @@ yazdır "Toplam:", toplam
 
 ```
 ./paketle.sh
-sudo apt install ./dist/kodtr_0.1.0_all.deb
+sudo apt install ./dist/kodtr_0.2.0_all.deb
 ```
 
 Kurulum sonrası:
@@ -29,10 +30,30 @@ Kurulum sonrası:
 cd KodTR
 python3 -m kodtr_ide                      # IDE
 python3 -m kodtr ornekler/toplama.kodtr   # CLI ile çalıştır
-python3 -m kodtr çevir ornekler/toplama.kodtr   # Python halini gör
+python3 -m kodtr çevir ornekler/toplama.kodtr                # Python halini gör
+python3 -m kodtr çevir ornekler/toplama.kodtr --hedef cs     # C# halini gör
+python3 -m kodtr çevir ornekler/toplama.kodtr --hedef js -o toplama.js
 ```
 
 Gereksinim: Python 3.9+ ve PyQt6 (`python3-pyqt6`).
+
+## Hedef diller
+
+| Hedef | CLI adı | Uzantı | Çalıştırma |
+|---|---|---|---|
+| Python | `python`, `py` | `.py` | IDE içinden F5 / `python3` |
+| C# | `csharp`, `cs`, `c#` | `.cs` | `mcs dosya.cs && mono dosya.exe` veya `dotnet` |
+| JavaScript | `javascript`, `js` | `.js` | `node dosya.js` (girdi stdin'den okunur) |
+
+IDE'de sağ paneldeki **HEDEF KOD** seçicisinden dil seçilir; Türkçe kod
+yazıldıkça seçili dile çevirisi anlık görünür. **Dosya → Çeviriyi Dışa
+Aktar** (Ctrl+E) her hedefi kendi uzantısıyla ayrı dosyaya yazar —
+transkriptler birbirine karışmaz. F5 çalıştırması her zaman Python
+üzerinden yapılır.
+
+C# ve JavaScript çıktılarında girdi/yazdırma için Türkçe adlı küçük
+yardımcı fonksiyonlar (`SayıAl`, `metinAl` gibi) yalnızca
+kullanıldıklarında dosyanın başına eklenir.
 
 ## Dil rehberi
 
@@ -80,21 +101,28 @@ Kurallar:
 
 ```
 kodtr/            Dil çekirdeği (bağımsız paket, PyQt gerektirmez)
-  sozluk.py       Türkçe → Python kelime tabloları (dili buradan genişlet)
-  cevirici.py     Tokenizer + çevirici
-  __main__.py     CLI: kodtr çalıştır / çevir
+  sozluk.py       Türkçe kelime tabloları (dili buradan genişlet)
+  cevirici.py     Tokenizer + Türkçe cümle kalıpları -> Python
+  hedefler/       Hedef dil backend'leri
+    python.py     Python (çekirdek çıktının kendisi)
+    csharp.py     C# (class Program + Main, Türkçe yardımcılar)
+    javascript.py JavaScript (Node.js)
+    ara.py        Ortak katman: satır yapıları + ifade çevirici
+  __main__.py     CLI: kodtr çalıştır / çevir --hedef ...
 kodtr_ide/        PyQt6 IDE
-  vurgulayici.py  Söz dizimi renklendirme (sozluk.py'den beslenir)
+  vurgulayici.py  Söz dizimi renklendirme (KodTR + hedef diller)
   editor.py       Satır numaralı, otomatik girintili editör
-  ana_pencere.py  Ana pencere, F5 çalıştırma, çıktı paneli
+  ana_pencere.py  Ana pencere, hedef seçici, F5, dışa aktarma
 ornekler/         Örnek .kodtr programları
 veri/             .desktop dosyası
 paketle.sh        .deb paketi üretir (dist/ altına)
 ```
 
+Yeni hedef dil eklemek: `kodtr/hedefler/` altına modül yaz,
+`HEDEFLER` tablosuna satır ekle — IDE seçicisi ve CLI otomatik tanır.
+
 ## Yol haritası
 
 - [ ] Hata mesajlarının Türkçeleştirilmesi (traceback çevirisi)
-- [ ] Gerçek AST tabanlı çevirici (JavaScript, C# gibi ek hedef diller için)
 - [ ] IDE: otomatik tamamlama, kelime ipuçları
-- [ ] Pardus mağazasına başvuru
+- [ ] C# / JS çıktısını IDE içinden çalıştırma (mcs/node varsa)

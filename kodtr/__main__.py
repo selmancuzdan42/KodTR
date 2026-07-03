@@ -5,13 +5,18 @@ Kullanım:
     python -m kodtr çalıştır dosya.kodtr       # aynı şey
     python -m kodtr çalıştır dosya.kodtr --göster   # önce Python halini bas
     python -m kodtr çevir dosya.kodtr          # Python halini stdout'a yaz
-    python -m kodtr çevir dosya.kodtr -o çıktı.py
+    python -m kodtr çevir dosya.kodtr --hedef csharp      # C# çevirisi
+    python -m kodtr çevir dosya.kodtr --hedef js -o out.js
+    python -m kodtr diller                     # hedef dilleri listele
+
+Hedef adları: python (py), csharp (cs, c#), javascript (js)
 """
 
 import sys
 from pathlib import Path
 
-from .cevirici import cevir, calistir
+from .cevirici import calistir
+from .hedefler import HEDEFLER, cevir, hedef_bul
 
 KULLANIM = __doc__
 
@@ -34,6 +39,10 @@ def main(argv=None):
         return 0
 
     komut = args.pop(0)
+    if komut == "diller":
+        for ad, (etiket, uzanti, _) in HEDEFLER.items():
+            print(f"{ad:<12} {etiket:<12} {uzanti}")
+        return 0
     if komut not in _CALISTIR | _CEVIR:
         # "python -m kodtr dosya.kodtr" kısayolu
         args.insert(0, komut)
@@ -41,12 +50,20 @@ def main(argv=None):
 
     goster = False
     cikti_yolu = None
+    hedef = "python"
     dosyalar = []
     i = 0
     while i < len(args):
         arg = args[i]
         if arg in ("--göster", "--goster"):
             goster = True
+        elif arg == "--hedef":
+            i += 1
+            if i >= len(args) or hedef_bul(args[i]) is None:
+                print("kodtr: --hedef için geçerli dil gerekli "
+                      "(python, csharp, javascript)", file=sys.stderr)
+                return 1
+            hedef = hedef_bul(args[i])
         elif arg == "-o":
             i += 1
             if i >= len(args):
@@ -64,12 +81,12 @@ def main(argv=None):
     kaynak = _oku(dosyalar[0])
 
     if komut in _CEVIR:
-        py_kaynak = cevir(kaynak)
+        hedef_kaynak = cevir(kaynak, hedef)
         if cikti_yolu:
-            Path(cikti_yolu).write_text(py_kaynak + "\n", encoding="utf-8")
+            Path(cikti_yolu).write_text(hedef_kaynak + "\n", encoding="utf-8")
             print(f"kodtr: yazıldı -> {cikti_yolu}")
         else:
-            print(py_kaynak)
+            print(hedef_kaynak)
         return 0
 
     if goster:

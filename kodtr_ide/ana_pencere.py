@@ -1,13 +1,14 @@
 """KodTR IDE ana penceresi.
 
 Yerleşim:
-    [Kod Blokları] | [Türkçe kod editörü] | [Python (canlı çeviri)]
+    [Kod Blokları] | [Türkçe kod editörü] | [Hedef kod (canlı çeviri)]
     -----------------------------------------------------------------
     [Çıktı paneli + girdi satırı]
 
-Türkçe kod yazıldıkça Python karşılığı anlık olarak sol panelde belirir.
-Soldaki blok menüsünden bir kalıba tıklanınca kod, imlecin bulunduğu
-satırın girintisine uydurularak editöre eklenir.
+Sağ panelin başlığındaki seçiciden hedef dil (Python / C# / JavaScript)
+seçilir; Türkçe kod yazıldıkça seçili dile çevirisi anlık görünür.
+Çalıştırma (F5) her zaman Python üzerinden yapılır. "Çeviriyi Dışa
+Aktar" her hedefi kendi uzantısıyla ayrı dosyaya yazar (.py/.cs/.js).
 """
 
 import re
@@ -18,17 +19,18 @@ from pathlib import Path
 from PyQt6.QtCore import QProcess, Qt, QTimer
 from PyQt6.QtGui import (QAction, QColor, QFontDatabase, QIcon, QKeySequence,
                          QTextCharFormat, QTextCursor)
-from PyQt6.QtWidgets import (QFileDialog, QHBoxLayout, QLabel, QLineEdit,
-                             QMainWindow, QMessageBox, QPlainTextEdit,
-                             QSplitter, QTreeWidget, QTreeWidgetItem,
-                             QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel,
+                             QLineEdit, QMainWindow, QMessageBox,
+                             QPlainTextEdit, QSplitter, QTreeWidget,
+                             QTreeWidgetItem, QVBoxLayout, QWidget)
 
 import kodtr
-from kodtr.cevirici import cevir
+from kodtr.cevirici import cevir as py_cevir
+from kodtr.hedefler import HEDEFLER, cevir as hedef_cevir
 
 from .bloklar import BLOKLAR
 from .editor import KodTREditor
-from .vurgulayici import PythonVurgulayici
+from .vurgulayici import HedefVurgulayici
 
 SABLON = '''\
 # KodTR'ye hoş geldin!
@@ -99,12 +101,22 @@ class AnaPencere(QMainWindow):
         self._cevirme_sayaci.timeout.connect(self._canli_cevir)
         self.editor.textChanged.connect(self._cevirme_sayaci.start)
 
-        # --- canlı Python paneli
+        # --- canlı hedef kod paneli
+        self.hedef = "python"
         self.python_gorunum = QPlainTextEdit(readOnly=True)
         self.python_gorunum.setFont(self.editor.font())
         self.python_gorunum.setStyleSheet(
             "QPlainTextEdit { background-color: #282c34; color: #abb2bf; border: none; }")
-        PythonVurgulayici(self.python_gorunum.document())
+        self._vurgulayici = HedefVurgulayici(
+            self.python_gorunum.document(), self.hedef)
+
+        self.hedef_secici = QComboBox()
+        for ad, (etiket, _uzanti, _fn) in HEDEFLER.items():
+            self.hedef_secici.addItem(etiket, ad)
+        self.hedef_secici.setStyleSheet(
+            "QComboBox { background-color: #2c313a; color: #abb2bf;"
+            " border: 1px solid #3b4048; padding: 1px 8px; }")
+        self.hedef_secici.currentIndexChanged.connect(self._hedef_degisti)
 
         # --- kod blokları menüsü
         self.blok_agaci = QTreeWidget()
@@ -148,11 +160,28 @@ class AnaPencere(QMainWindow):
         g_yerlesim.addWidget(self.girdi)
         yerlesim.addWidget(girdi_satiri)
 
+        # --- hedef paneli: başlık şeridi + dil seçici + kod görünümü
+        hedef_baslik = QWidget()
+        hedef_baslik.setStyleSheet("background-color: #21252b;")
+        hb = QHBoxLayout(hedef_baslik)
+        hb.setContentsMargins(8, 2, 8, 2)
+        hedef_etiket = QLabel("HEDEF KOD")
+        hedef_etiket.setStyleSheet("color: #7f848e; font-weight: bold;")
+        hb.addWidget(hedef_etiket)
+        hb.addStretch()
+        hb.addWidget(self.hedef_secici)
+
+        self._python_paneli = QWidget()
+        hp = QVBoxLayout(self._python_paneli)
+        hp.setContentsMargins(0, 0, 0, 0)
+        hp.setSpacing(0)
+        hp.addWidget(hedef_baslik)
+        hp.addWidget(self.python_gorunum)
+
         # --- yerleşim
         yatay = QSplitter(Qt.Orientation.Horizontal)
         yatay.addWidget(_baslikli("KOD BLOKLARI", self.blok_agaci))
         yatay.addWidget(_baslikli("TÜRKÇE KOD (KODTR)", self.editor))
-        self._python_paneli = _baslikli("PYTHON (CANLI ÇEVİRİ)", self.python_gorunum)
         yatay.addWidget(self._python_paneli)
         yatay.setSizes([200, 520, 460])
         yatay.setStretchFactor(1, 1)
@@ -195,6 +224,9 @@ class AnaPencere(QMainWindow):
         eylem("Kaydet", "Ctrl+S", self.kaydet, "document-save", dosya_menu)
         eylem("Farklı Kaydet...", "Ctrl+Shift+S", self.farkli_kaydet,
               "document-save-as", dosya_menu, cubukta=False)
+        dosya_menu.addSeparator()
+        eylem("Çeviriyi Dışa Aktar...", "Ctrl+E", self.disa_aktar,
+              "document-export", dosya_menu, cubukta=False)
         dosya_menu.addSeparator()
         eylem("Çık", "Ctrl+Q", self.close, "application-exit",
               dosya_menu, cubukta=False)
@@ -255,12 +287,41 @@ class AnaPencere(QMainWindow):
     # ------------------------------------------------------ canlı çeviri
     def _canli_cevir(self):
         try:
-            self.python_gorunum.setPlainText(cevir(self.editor.toPlainText()))
+            self.python_gorunum.setPlainText(
+                hedef_cevir(self.editor.toPlainText(), self.hedef))
         except Exception as hata:  # çeviri asla IDE'yi düşürmesin
             self.python_gorunum.setPlainText(f"# çeviri hatası: {hata}")
 
+    def _hedef_degisti(self, _indeks):
+        self.hedef = self.hedef_secici.currentData()
+        self._vurgulayici.setDocument(None)
+        self._vurgulayici = HedefVurgulayici(
+            self.python_gorunum.document(), self.hedef)
+        self._canli_cevir()
+
     def _python_paneli_degistir(self):
         self._python_paneli.setVisible(not self._python_paneli.isVisible())
+
+    def disa_aktar(self):
+        """Seçili hedef dilin çevirisini kendi uzantısıyla ayrı dosyaya yazar."""
+        etiket, uzanti, _fn = HEDEFLER[self.hedef]
+        varsayilan = (str(self.dosya.with_suffix(uzanti))
+                      if self.dosya else f"adsız{uzanti}")
+        yol, _ = QFileDialog.getSaveFileName(
+            self, f"{etiket} Olarak Dışa Aktar", varsayilan,
+            f"{etiket} Dosyaları (*{uzanti});;Tüm Dosyalar (*)")
+        if not yol:
+            return
+        if not yol.endswith(uzanti):
+            yol += uzanti
+        try:
+            Path(yol).write_text(
+                hedef_cevir(self.editor.toPlainText(), self.hedef) + "\n",
+                encoding="utf-8")
+        except OSError as hata:
+            QMessageBox.critical(self, "KodTR IDE", f"Yazılamadı:\n{hata}")
+            return
+        self.statusBar().showMessage(f"{etiket} kodu yazıldı: {yol}", 5000)
 
     # ------------------------------------------------------------- dosya
     def _basligi_guncelle(self):
@@ -343,8 +404,9 @@ class AnaPencere(QMainWindow):
             self.statusBar().showMessage("Zaten çalışan bir program var", 3000)
             return
 
-        py_kaynak = cevir(self.editor.toPlainText())
-        self.python_gorunum.setPlainText(py_kaynak)
+        py_kaynak = py_cevir(self.editor.toPlainText())
+        if self.hedef == "python":
+            self.python_gorunum.setPlainText(py_kaynak)
 
         self._gecici_py = tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", prefix="kodtr_", delete=False,
