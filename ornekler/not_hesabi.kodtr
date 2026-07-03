@@ -1,0 +1,16 @@
+# Not hesabı — liste, döngü ve karşılaştırma bir arada
+notlar = [70, 85, 90, 60]
+
+toplam = 0
+en_yuksek = 0
+notlar dizisini n ile dön:
+    toplam = toplam + n
+    eğer n > en_yuksek ise:
+        en_yuksek = n
+
+yazdır "Not sayısı:", uzunluk(notlar)
+yazdır "Toplam:", toplam
+yazdır "En yüksek:", en_yuksek
+
+eğer en_yuksek >= 85 ise:
+    yazdır "Takdir yolunda!"

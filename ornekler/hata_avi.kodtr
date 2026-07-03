@@ -1,0 +1,8 @@
+# HATA AVI — Bu programda bilerek bırakılmış 1 hata var!
+# Çalıştır (F5), Türkçe hata mesajını oku ve hatayı düzelt.
+
+yaş = kullanıcıdan sayı al("Kaç yaşındasın? ")
+yazdır f"10 yıl sonra {yas + 10} yaşında olacaksın."
+
+# İpucu: hata mesajı sana hangi satıra bakacağını
+# ve neyi kastetmiş olabileceğini söyleyecek.

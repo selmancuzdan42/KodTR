@@ -12,6 +12,17 @@ toplam = sayı1 + sayı2
 yazdır "Toplam:", toplam
 ```
 
+## Ekran görüntüleri
+
+Aynı Türkçe kod, seçilen hedefe göre anlık çevrilir — solda blok
+menüsü, ortada Türkçe kod, sağda hedef dil, altta program çıktısı:
+
+![KodTR IDE — C# hedefi](gorseller/ide_csharp.png)
+
+Hata mesajları Türkçedir, hatalı satırı gösterir ve benzer ad önerir:
+
+![Türkçe hata mesajı](gorseller/ide_hata.png)
+
 ## Kurulum (Pardus / Debian)
 
 ```
@@ -54,6 +65,27 @@ transkriptler birbirine karışmaz. F5 çalıştırması her zaman Python
 C# ve JavaScript çıktılarında girdi/yazdırma için Türkçe adlı küçük
 yardımcı fonksiyonlar (`SayıAl`, `metinAl` gibi) yalnızca
 kullanıldıklarında dosyanın başına eklenir.
+
+## Türkçe hata mesajları
+
+Program hata verdiğinde İngilizce traceback yerine, hatanın olduğu
+KodTR satırını gösteren Türkçe bir açıklama alırsın:
+
+```
+HATA — 5. satır:
+    yazdır f"10 yıl sonra {yas + 10} yaşında olacaksın."
+'yas' diye bir değişken ya da fonksiyon tanımlanmamış. Şunu mu demek istedin: 'yaş'?
+```
+
+Sık hatalar için özel açıklamalar var: tanımsız değişken (benzer ad
+önerisiyle), sıfıra bölme, sayı beklenirken metin girilmesi, liste
+sınırı aşımı, eksik `:`, kapatılmamış parantez/tırnak, girinti hatası,
+yanlış parametre sayısı ve sonsuz özyineleme. Hem IDE'nin çıktı
+panelinde hem komut satırında çalışır.
+
+IDE'deki **Örnekler** menüsünden hazır programlar açılabilir;
+`hata_avi.kodtr` bilerek hatalı bırakılmıştır — çalıştır, Türkçe hata
+mesajını oku, hatayı düzelt.
 
 ## Dil rehberi
 

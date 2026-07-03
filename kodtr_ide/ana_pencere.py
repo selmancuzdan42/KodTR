@@ -16,7 +16,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from PyQt6.QtCore import QProcess, Qt, QTimer
+from PyQt6.QtCore import QProcess, QProcessEnvironment, Qt, QTimer
 from PyQt6.QtGui import (QAction, QColor, QFontDatabase, QIcon, QKeySequence,
                          QTextCharFormat, QTextCursor)
 from PyQt6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel,
@@ -207,7 +207,21 @@ class AnaPencere(QMainWindow):
         dosya_menu = menu.addMenu("&Dosya")
         calistir_menu = menu.addMenu("&Çalıştır")
         gorunum_menu = menu.addMenu("&Görünüm")
+        ornek_menu = menu.addMenu("Ö&rnekler")
         yardim_menu = menu.addMenu("&Yardım")
+
+        ornek_dizini = self._ornek_dizini()
+        if ornek_dizini:
+            for yol in sorted(ornek_dizini.glob("*.kodtr")):
+                ad = yol.stem.replace("_", " ").capitalize()
+                eylemi = QAction(ad, self)
+                eylemi.triggered.connect(
+                    lambda _isaret=False, y=yol: self._ornek_ac(y))
+                ornek_menu.addAction(eylemi)
+        else:
+            bos = QAction("(örnek bulunamadı)", self)
+            bos.setEnabled(False)
+            ornek_menu.addAction(bos)
 
         def eylem(ad, kisayol, islev, tema_ikonu, menu_, cubukta=True):
             e = QAction(QIcon.fromTheme(tema_ikonu), ad, self)
@@ -243,6 +257,31 @@ class AnaPencere(QMainWindow):
 
         eylem("Hakkında", None, self.hakkinda, "help-about",
               yardim_menu, cubukta=False)
+
+    # ----------------------------------------------------------- örnekler
+    @staticmethod
+    def _ornek_dizini():
+        """Örnek programların dizinini bulur (repo ya da kurulu paket)."""
+        for aday in (Path(kodtr.__file__).parent.parent / "ornekler",
+                     Path("/usr/share/doc/kodtr/ornekler")):
+            if aday.is_dir():
+                return aday
+        return None
+
+    def _ornek_ac(self, yol):
+        """Örneği kopya olarak açar; kaydetmek isteyince yeni ad sorulur."""
+        if not self._kayit_sorusu():
+            return
+        try:
+            icerik = yol.read_text(encoding="utf-8")
+        except OSError as hata:
+            QMessageBox.critical(self, "KodTR IDE", f"Örnek açılamadı:\n{hata}")
+            return
+        self.dosya = None
+        self.editor.setPlainText(icerik)
+        self.editor.document().setModified(False)
+        self._basligi_guncelle()
+        self.statusBar().showMessage(f"Örnek açıldı: {yol.name}", 4000)
 
     # ----------------------------------------------------------- bloklar
     def _blok_tiklandi(self, oge, _sutun):
@@ -404,24 +443,33 @@ class AnaPencere(QMainWindow):
             self.statusBar().showMessage("Zaten çalışan bir program var", 3000)
             return
 
-        py_kaynak = py_cevir(self.editor.toPlainText())
         if self.hedef == "python":
-            self.python_gorunum.setPlainText(py_kaynak)
+            self.python_gorunum.setPlainText(py_cevir(self.editor.toPlainText()))
 
+        # kaynak .kodtr olarak yazılır ve 'python -m kodtr' ile çalıştırılır;
+        # böylece Türkçe hata mesajları satır numarasıyla buraya düşer
         self._gecici_py = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".py", prefix="kodtr_", delete=False,
+            mode="w", suffix=".kodtr", prefix="kodtr_", delete=False,
             encoding="utf-8")
-        self._gecici_py.write(py_kaynak)
+        self._gecici_py.write(self.editor.toPlainText())
         self._gecici_py.close()
 
         self.cikti.clear()
         self._yaz("— program başladı —\n", BILGI_RENK)
 
+        ortam = QProcessEnvironment.systemEnvironment()
+        paket_koku = str(Path(kodtr.__file__).parent.parent)
+        mevcut = ortam.value("PYTHONPATH", "")
+        ortam.insert("PYTHONPATH",
+                     paket_koku + (":" + mevcut if mevcut else ""))
+
         self.surec = QProcess(self)
+        self.surec.setProcessEnvironment(ortam)
         self.surec.readyReadStandardOutput.connect(self._cikti_oku)
         self.surec.readyReadStandardError.connect(self._hata_oku)
         self.surec.finished.connect(self._bitti)
-        self.surec.start(sys.executable, ["-u", self._gecici_py.name])
+        self.surec.start(sys.executable,
+                         ["-u", "-m", "kodtr", "çalıştır", self._gecici_py.name])
 
         self.girdi.setEnabled(True)
         self.girdi.setFocus()

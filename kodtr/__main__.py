@@ -95,12 +95,11 @@ def main(argv=None):
         print("# --- çıktı ---")
     try:
         calistir(kaynak, dosya_adi=dosyalar[0])
-    except SyntaxError as hata:
-        print(f"kodtr: söz dizimi hatası ({dosyalar[0]}, satır {hata.lineno}):",
-              file=sys.stderr)
-        print(f"  {hata.text.rstrip() if hata.text else ''}", file=sys.stderr)
-        print("İpucu: '--göster' ile çevrilen Python kodunu inceleyebilirsin.",
-              file=sys.stderr)
+    except KeyboardInterrupt:
+        return 130
+    except Exception as hata:
+        from .hatalar import hata_metni
+        print(hata_metni(hata, dosyalar[0], kaynak), file=sys.stderr)
         return 1
     return 0
 
