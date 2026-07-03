@@ -1,0 +1,9 @@
+# Fonksiyon ve sayarak döngü örneği
+fonksiyon faktoriyel(n):
+    sonuç = 1
+    1'den n'e kadar i ile say:
+        sonuç = sonuç * i
+    döndür sonuç
+
+n = kullanıcıdan sayı al("Bir sayı gir: ")
+yazdır f"{n}! = {faktoriyel(n)}"

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=KodTR IDE
+GenericName=Türkçe Programlama Dili
+Comment=Türkçe yazılan, Python'a çevrilen programlama dili geliştirme ortamı
+Exec=kodtr-ide %f
+Icon=kodtr
+Terminal=false
+Categories=Development;IDE;Education;
+Keywords=kodtr;türkçe;python;programlama;eğitim;
+StartupWMClass=kodtr-ide

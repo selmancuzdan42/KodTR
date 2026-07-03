@@ -1,0 +1,92 @@
+"""KodTR komut satırı arayüzü.
+
+Kullanım:
+    python -m kodtr dosya.kodtr                # doğrudan çalıştır
+    python -m kodtr çalıştır dosya.kodtr       # aynı şey
+    python -m kodtr çalıştır dosya.kodtr --göster   # önce Python halini bas
+    python -m kodtr çevir dosya.kodtr          # Python halini stdout'a yaz
+    python -m kodtr çevir dosya.kodtr -o çıktı.py
+"""
+
+import sys
+from pathlib import Path
+
+from .cevirici import cevir, calistir
+
+KULLANIM = __doc__
+
+_CALISTIR = {"çalıştır", "calistir", "run"}
+_CEVIR = {"çevir", "cevir"}
+
+
+def _oku(yol):
+    dosya = Path(yol)
+    if not dosya.exists():
+        print(f"kodtr: dosya bulunamadı: {yol}", file=sys.stderr)
+        sys.exit(1)
+    return dosya.read_text(encoding="utf-8")
+
+
+def main(argv=None):
+    args = list(sys.argv[1:] if argv is None else argv)
+    if not args or args[0] in ("yardım", "yardim", "-h", "--help"):
+        print(KULLANIM)
+        return 0
+
+    komut = args.pop(0)
+    if komut not in _CALISTIR | _CEVIR:
+        # "python -m kodtr dosya.kodtr" kısayolu
+        args.insert(0, komut)
+        komut = "çalıştır"
+
+    goster = False
+    cikti_yolu = None
+    dosyalar = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ("--göster", "--goster"):
+            goster = True
+        elif arg == "-o":
+            i += 1
+            if i >= len(args):
+                print("kodtr: -o için dosya adı gerekli", file=sys.stderr)
+                return 1
+            cikti_yolu = args[i]
+        else:
+            dosyalar.append(arg)
+        i += 1
+
+    if len(dosyalar) != 1:
+        print(KULLANIM, file=sys.stderr)
+        return 1
+
+    kaynak = _oku(dosyalar[0])
+
+    if komut in _CEVIR:
+        py_kaynak = cevir(kaynak)
+        if cikti_yolu:
+            Path(cikti_yolu).write_text(py_kaynak + "\n", encoding="utf-8")
+            print(f"kodtr: yazıldı -> {cikti_yolu}")
+        else:
+            print(py_kaynak)
+        return 0
+
+    if goster:
+        print("# --- çevrilen Python kodu ---")
+        print(cevir(kaynak))
+        print("# --- çıktı ---")
+    try:
+        calistir(kaynak, dosya_adi=dosyalar[0])
+    except SyntaxError as hata:
+        print(f"kodtr: söz dizimi hatası ({dosyalar[0]}, satır {hata.lineno}):",
+              file=sys.stderr)
+        print(f"  {hata.text.rstrip() if hata.text else ''}", file=sys.stderr)
+        print("İpucu: '--göster' ile çevrilen Python kodunu inceleyebilirsin.",
+              file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

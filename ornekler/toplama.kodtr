@@ -1,0 +1,5 @@
+# İki sayıyı toplayan ilk KodTR programı
+tanımla sayı1 = kullanıcıdan sayı al("Birinci sayı: ")
+tanımla sayı2 = kullanıcıdan sayı al("İkinci sayı: ")
+toplam = sayı1 + sayı2
+yazdır "Toplam:", toplam

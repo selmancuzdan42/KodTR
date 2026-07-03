@@ -1,0 +1,12 @@
+# Sayı tahmin oyunu — while, if/elif/else örneği
+hedef = 7
+tahmin = 0
+
+tahmin != hedef iken:
+    tahmin = kullanıcıdan sayı al("Tahminin (1-10): ")
+    eğer tahmin < hedef ise:
+        yazdır "Daha büyük bir sayı dene"
+    değilse eğer tahmin > hedef ise:
+        yazdır "Daha küçük bir sayı dene"
+
+yazdır "Tebrikler, bildin!"

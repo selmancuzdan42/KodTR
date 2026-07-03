@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# Paket çıktıları (release olarak yayınlanır, repoya girmez)
+dist/
+
+# Editör / IDE
+.vscode/
+.idea/
