@@ -25,11 +25,16 @@ Hata mesajları Türkçedir, hatalı satırı gösterir ve benzer ad önerir:
 
 ![Türkçe hata mesajı](gorseller/ide_hata.png)
 
+Kesme noktası (F2) koyup programı adım adım izleyebilir, her satırda
+değişkenlerin güncel değerlerini görebilirsin:
+
+![Hata ayıklama](gorseller/ide_debug.png)
+
 ## Kurulum (Pardus / Debian)
 
 ```
 ./paketle.sh
-sudo apt install ./dist/kodtr_0.3.0_all.deb
+sudo apt install ./dist/kodtr_0.4.0_all.deb
 ```
 
 Kurulum sonrası:
@@ -88,6 +93,16 @@ panelinde hem komut satırında çalışır.
 IDE'deki **Örnekler** menüsünden hazır programlar açılabilir;
 `hata_avi.kodtr` bilerek hatalı bırakılmıştır — çalıştır, Türkçe hata
 mesajını oku, hatayı düzelt.
+
+## Hata ayıklama (debugger)
+
+Satır numarasının soluna tıklayarak ya da **F2** ile kesme noktası
+konur (kırmızı nokta). **F5**'e basınca program o satıra gelince durur;
+o an **Değişkenler** panelinde tüm değişkenlerin güncel değeri görünür.
+Oradan **F10** ile satır satır ilerler, **F8** ile bir sonraki kesme
+noktasına kadar devam edersin. Kesme noktası yoksa F5 programı normal
+çalıştırır. Bu, döngü ve değişken kavramlarını tahtada göstermenin en
+kolay yoludur.
 
 ## Dil rehberi
 

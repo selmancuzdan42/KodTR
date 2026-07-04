@@ -86,8 +86,10 @@ def _calisma_mesaji(hata, kaynak):
         m = str(hata)
         if "can only concatenate str" in m or ('unsupported operand' in m
                                                and 'str' in m):
-            return ("Metin ile sayı doğrudan birleştirilemez. Sayıyı "
-                    "metin(...) ile metne çevir ya da f\"...\" kullan.")
+            return ('Metin ile sayı doğrudan birleştirilemez (C#/JS\'te '
+                    'çalışır ama burada çalışmaz). Üç yol var: virgülle '
+                    'ayır (yazdır "kalan:", hak), f-string kullan '
+                    '(f"kalan: {hak}") ya da sayıyı metin(hak) ile çevir.')
         if "not callable" in m:
             return ("Fonksiyon olmayan bir şey çağrılmaya çalışıldı. "
                     "Değişken adıyla fonksiyon adı karışmış olabilir.")

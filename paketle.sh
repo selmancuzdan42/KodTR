@@ -7,7 +7,7 @@
 # Çıktı: dist/kodtr_<sürüm>_all.deb
 set -eu
 
-SURUM="0.3.0"
+SURUM="0.4.0"
 KOK="$(cd "$(dirname "$0")" && pwd)"
 DIST="$KOK/dist"
 KURULUM="$DIST/kodtr_${SURUM}_all"

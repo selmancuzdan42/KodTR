@@ -16,12 +16,16 @@ import sys
 import tempfile
 from pathlib import Path
 
+import json
+
 from PyQt6.QtCore import QProcess, QProcessEnvironment, QSize, Qt, QTimer
 from PyQt6.QtGui import (QAction, QColor, QIcon, QKeySequence,
                          QTextCharFormat, QTextCursor)
-from PyQt6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel,
-                             QLineEdit, QMainWindow, QMessageBox,
-                             QPlainTextEdit, QSplitter, QTreeWidget,
+from PyQt6.QtNetwork import QHostAddress, QTcpServer
+from PyQt6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QHeaderView,
+                             QLabel, QLineEdit, QMainWindow, QMessageBox,
+                             QPlainTextEdit, QSplitter, QTableWidget,
+                             QTableWidgetItem, QTabWidget, QTreeWidget,
                              QTreeWidgetItem, QVBoxLayout, QWidget)
 
 import kodtr
@@ -64,6 +68,9 @@ class AnaPencere(QMainWindow):
         self.dosya = None          # açık dosyanın yolu (Path | None)
         self.surec = None          # çalışan QProcess
         self._gecici_py = None
+        self._hata_sunucu = None   # QTcpServer (hata ayıklama oturumu)
+        self._hata_soket = None    # bağlı QTcpSocket
+        self._hata_kipinde = False
 
         self._arayuzu_kur()
         if dosya:
@@ -98,9 +105,10 @@ class AnaPencere(QMainWindow):
         self._cevirme_sayaci.timeout.connect(self._canli_cevir)
         self.editor.textChanged.connect(self._cevirme_sayaci.start)
 
-        # --- canlı hedef kod paneli
+        # --- canlı hedef kod paneli (düzenlenebilir; Türkçe kod değişince
+        # yeniden çevrilir, elle yapılan geçici değişiklikler kaybolur)
         self.hedef = "python"
-        self.python_gorunum = QPlainTextEdit(readOnly=True)
+        self.python_gorunum = QPlainTextEdit()
         self.python_gorunum.setFont(self.editor.font())
         self.python_gorunum.setStyleSheet(
             "QPlainTextEdit { background-color: #282c34; color: #abb2bf; border: none; }")
@@ -152,6 +160,17 @@ class AnaPencere(QMainWindow):
         g_yerlesim.addWidget(self.girdi)
         yerlesim.addWidget(girdi_satiri)
 
+        # --- değişken paneli (yalnız hata ayıklamada görünür)
+        self.degisken_tablosu = QTableWidget(0, 2)
+        self.degisken_tablosu.setHorizontalHeaderLabels(["Değişken", "Değer"])
+        self.degisken_tablosu.verticalHeader().setVisible(False)
+        self.degisken_tablosu.setEditTriggers(
+            QTableWidget.EditTrigger.NoEditTriggers)
+        self.degisken_tablosu.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch)
+        self.degisken_tablosu.setFont(sabit_yazi)
+        self._degisken_paneli = _baslikli("DEĞİŞKENLER", self.degisken_tablosu)
+
         # --- hedef paneli: başlık şeridi + dil seçici + kod görünümü
         hedef_baslik = QWidget()
         hb = QHBoxLayout(hedef_baslik)
@@ -179,9 +198,15 @@ class AnaPencere(QMainWindow):
         yatay.setStretchFactor(1, 1)
         yatay.setStretchFactor(2, 1)
 
+        alt = QSplitter(Qt.Orientation.Horizontal)
+        alt.addWidget(_baslikli("ÇIKTI", cikti_kutu))
+        alt.addWidget(self._degisken_paneli)
+        alt.setSizes([760, 280])
+        self._degisken_paneli.hide()
+
         dikey = QSplitter(Qt.Orientation.Vertical)
         dikey.addWidget(yatay)
-        dikey.addWidget(_baslikli("ÇIKTI", cikti_kutu))
+        dikey.addWidget(alt)
         dikey.setSizes([520, 200])
         self.setCentralWidget(dikey)
 
@@ -246,6 +271,17 @@ class AnaPencere(QMainWindow):
         self.durdur_eylemi = eylem(
             "Durdur", "Shift+F5", self.durdur, "media-playback-stop", calistir_menu)
         self.durdur_eylemi.setEnabled(False)
+        calistir_menu.addSeparator()
+        self.kesme_eylemi = eylem(
+            "Kesme Noktası Aç/Kapat", "F2", self.editor.kesme_degistir,
+            "media-record", calistir_menu, cubukta=False)
+        self.adim_eylemi = eylem(
+            "Adım (satır satır)", "F10", self._adim, "media-skip-forward",
+            calistir_menu)
+        self.devam_eylemi = eylem(
+            "Devam Et", "F8", self._devam, "media-seek-forward", calistir_menu)
+        self.adim_eylemi.setEnabled(False)
+        self.devam_eylemi.setEnabled(False)
 
         eylem("Python Panelini Gizle/Göster", "F6", self._python_paneli_degistir,
               "view-split-left-right", gorunum_menu, cubukta=False)
@@ -322,7 +358,8 @@ class AnaPencere(QMainWindow):
     def _canli_cevir(self):
         try:
             self.python_gorunum.setPlainText(
-                hedef_cevir(self.editor.toPlainText(), self.hedef))
+                hedef_cevir(self.editor.toPlainText(), self.hedef,
+                            yardimcilari_gizle=True))
         except Exception as hata:  # çeviri asla IDE'yi düşürmesin
             self.python_gorunum.setPlainText(f"# çeviri hatası: {hata}")
 
@@ -449,6 +486,9 @@ class AnaPencere(QMainWindow):
         self._gecici_py.write(self.editor.toPlainText())
         self._gecici_py.close()
 
+        kesmeler = self.editor.kesme_satirlari()
+        self._hata_kipinde = bool(kesmeler)
+
         self.cikti.clear()
         self._yaz("— program başladı —\n", BILGI_RENK)
 
@@ -463,16 +503,82 @@ class AnaPencere(QMainWindow):
         self.surec.readyReadStandardOutput.connect(self._cikti_oku)
         self.surec.readyReadStandardError.connect(self._hata_oku)
         self.surec.finished.connect(self._bitti)
-        self.surec.start(sys.executable,
-                         ["-u", "-m", "kodtr", "çalıştır", self._gecici_py.name])
+
+        if self._hata_kipinde:
+            self._hata_baslat(kesmeler, ortam)
+        else:
+            self.surec.start(sys.executable,
+                             ["-u", "-m", "kodtr", "çalıştır",
+                              self._gecici_py.name])
 
         self.girdi.setEnabled(True)
         self.girdi.setFocus()
         self.calistir_eylemi.setEnabled(False)
         self.durdur_eylemi.setEnabled(True)
-        self.statusBar().showMessage("Çalışıyor...")
+        self.statusBar().showMessage(
+            "Hata ayıklanıyor..." if self._hata_kipinde else "Çalışıyor...")
+
+    # -------------------------------------------------- hata ayıklama
+    def _hata_baslat(self, kesmeler, ortam):
+        """TCP sunucusunu açar ve programı hata-ayıkla kipinde başlatır."""
+        self._kesmeler = kesmeler
+        self._hata_sunucu = QTcpServer(self)
+        self._hata_sunucu.listen(QHostAddress.SpecialAddress.LocalHost, 0)
+        self._hata_sunucu.newConnection.connect(self._hata_baglandi)
+        kapi = self._hata_sunucu.serverPort()
+
+        self._degisken_paneli.show()
+        self.adim_eylemi.setEnabled(True)
+        self.devam_eylemi.setEnabled(True)
+        self.surec.start(sys.executable,
+                         ["-u", "-m", "kodtr", "hata-ayıkla",
+                          self._gecici_py.name, "--kapi", str(kapi)])
+
+    def _hata_baglandi(self):
+        self._hata_soket = self._hata_sunucu.nextPendingConnection()
+        self._hata_soket.readyRead.connect(self._hata_oku_protokol)
+
+    def _hata_oku_protokol(self):
+        while self._hata_soket and self._hata_soket.canReadLine():
+            satir = bytes(self._hata_soket.readLine()).decode("utf-8").strip()
+            if not satir:
+                continue
+            veri = json.loads(satir)
+            olay = veri.get("olay")
+            if olay == "hazir":
+                self._hata_gonder(komut="basla", kesmeler=self._kesmeler)
+            elif olay == "durdu":
+                self._durakta(veri["satir"], veri["degiskenler"])
+            elif olay == "bitti":
+                self.editor.durak_goster(None)
+
+    def _hata_gonder(self, **veri):
+        if self._hata_soket:
+            self._hata_soket.write((json.dumps(veri) + "\n").encode("utf-8"))
+            self._hata_soket.flush()
+
+    def _durakta(self, satir, degiskenler):
+        """Program bir satırda durdu: satırı vurgula, değişkenleri göster."""
+        self.editor.durak_goster(satir)
+        self.degisken_tablosu.setRowCount(len(degiskenler))
+        for sira, (ad, deger) in enumerate(sorted(degiskenler.items())):
+            self.degisken_tablosu.setItem(sira, 0, QTableWidgetItem(ad))
+            self.degisken_tablosu.setItem(sira, 1, QTableWidgetItem(deger))
+        self.statusBar().showMessage(f"Durdu — {satir}. satır")
+
+    def _adim(self):
+        if self._hata_soket:
+            self.editor.durak_goster(None)
+            self._hata_gonder(komut="adim")
+
+    def _devam(self):
+        if self._hata_soket:
+            self.editor.durak_goster(None)
+            self._hata_gonder(komut="devam")
 
     def durdur(self):
+        if self._hata_soket:
+            self._hata_gonder(komut="dur")
         if self.surec is not None:
             self.surec.kill()
 
@@ -511,6 +617,22 @@ class AnaPencere(QMainWindow):
             Path(self._gecici_py.name).unlink(missing_ok=True)
             self._gecici_py = None
         self.surec = None
+        self._hata_temizle()
+
+    def _hata_temizle(self):
+        """Hata ayıklama oturumunu kapatır ve arayüzü normale döndürür."""
+        self.editor.durak_goster(None)
+        self.adim_eylemi.setEnabled(False)
+        self.devam_eylemi.setEnabled(False)
+        self._degisken_paneli.hide()
+        self.degisken_tablosu.setRowCount(0)
+        if self._hata_soket is not None:
+            self._hata_soket.close()
+            self._hata_soket = None
+        if self._hata_sunucu is not None:
+            self._hata_sunucu.close()
+            self._hata_sunucu = None
+        self._hata_kipinde = False
 
     # ------------------------------------------------------------- çeşitli
     def hakkinda(self):

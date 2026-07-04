@@ -28,6 +28,21 @@ def hedef_bul(ad):
     return ad if ad in HEDEFLER else None
 
 
-def cevir(kaynak, hedef="python"):
-    """KodTR kaynağını istenen hedef dile çevirir."""
-    return HEDEFLER[hedef][2](kaynak)
+# IDE canlı panelinde yardımcı fonksiyon gövdeleri yerine bu not gösterilir.
+# Yalnız JavaScript: require("fs")/stdin okuma kalıbı yeni başlayanı
+# korkutuyor. C#'ta yapı (class Program + Main) öğretici olduğu için kalır.
+GIZLI_NOT = {
+    "javascript": "// (girdi/yardımcı fonksiyonlar dışa aktarınca eklenir)",
+}
+
+
+def cevir(kaynak, hedef="python", yardimcilari_gizle=False):
+    """KodTR kaynağını istenen hedef dile çevirir.
+
+    yardimcilari_gizle=True: C#/JS yardımcı fonksiyon gövdeleri tek satır
+    nota indirilir (IDE canlı paneli için; dışa aktarımda tam hâli yazılır).
+    """
+    fn = HEDEFLER[hedef][2]
+    if yardimcilari_gizle and hedef in GIZLI_NOT:
+        return fn(kaynak, gizle_notu=GIZLI_NOT[hedef])
+    return fn(kaynak)

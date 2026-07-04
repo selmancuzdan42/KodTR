@@ -107,7 +107,7 @@ class _Hedef:
         return e(alan["metin"]) + ";", False
 
 
-def cevir(kaynak):
+def cevir(kaynak, gizle_notu=None):
     kayitlar = ara.satirlari_ayristir(kaynak)
     govde = ara.govde_uret(kayitlar, _Hedef(), taban=0)
     while govde and not govde[0].strip():
@@ -123,7 +123,10 @@ def cevir(kaynak):
     # bağımlılıklar önce, sonra kullanım sırası
     gerekli += [ad for ad in kuyruk if ad not in gerekli]
 
-    baslik = [_YARDIMCILAR[ad] for ad in gerekli]
-    if baslik:
-        baslik.append("")
+    if not gerekli:
+        baslik = []
+    elif gizle_notu is not None:
+        baslik = [gizle_notu, ""]
+    else:
+        baslik = [_YARDIMCILAR[ad] for ad in gerekli] + [""]
     return "\n".join(baslik + govde)

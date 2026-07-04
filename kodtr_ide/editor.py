@@ -3,7 +3,7 @@ girinti ve otomatik tamamlama."""
 
 from PyQt6.QtCore import QRect, QSize, QStringListModel, Qt
 from PyQt6.QtGui import (QColor, QFont, QFontDatabase, QPainter, QTextCursor,
-                         QTextFormat)
+                         QTextBlockUserData, QTextFormat)
 from PyQt6.QtWidgets import QCompleter, QPlainTextEdit, QTextEdit, QWidget
 
 from kodtr.cevirici import _MASTER
@@ -32,7 +32,13 @@ YAZI = QColor("#abb2bf")
 AKTIF_SATIR = QColor("#2c313a")
 NUMARA_ALANI = QColor("#21252b")
 NUMARA_YAZI = QColor("#495162")
+KESME_RENK = QColor("#e06c75")
+DURAK_SATIR = QColor("#4a3a28")   # duraklanan satırın kehribar arkaplanı
 GIRINTI = "    "  # 4 boşluk
+
+
+class _KesmeVerisi(QTextBlockUserData):
+    """Satırda kesme noktası olduğunu işaretler (satırla birlikte taşınır)."""
 
 
 class _NumaraAlani(QWidget):
@@ -45,6 +51,9 @@ class _NumaraAlani(QWidget):
 
     def paintEvent(self, olay):
         self.editor.numara_ciz(olay)
+
+    def mousePressEvent(self, olay):
+        self.editor.numara_tiklandi(olay.position().toPoint().y())
 
 
 def kod_yazi_tipi(boyut=12):
@@ -75,6 +84,7 @@ class KodTREditor(QPlainTextEdit):
 
         self.vurgulayici = KodTRVurgulayici(self.document())
 
+        self._durak_satiri = None
         self.numara_alani = _NumaraAlani(self)
         self.blockCountChanged.connect(self._numara_genislik_guncelle)
         self.updateRequest.connect(self._numara_alani_guncelle)
@@ -100,10 +110,51 @@ class KodTREditor(QPlainTextEdit):
             "QListView::item:selected { background-color: #e06c75;"
             " color: #16191d; }")
 
+    # --- kesme noktaları (breakpoint) -----------------------------------
+    def kesme_degistir(self, blok=None):
+        """Verilen (ya da imlecin olduğu) satırda kesmeyi açar/kapatır (F2)."""
+        if blok is None:
+            blok = self.textCursor().block()
+        varsa = isinstance(blok.userData(), _KesmeVerisi)
+        blok.setUserData(None if varsa else _KesmeVerisi())
+        self.numara_alani.update()
+
+    def numara_tiklandi(self, y):
+        """Satır numarası alanına tıklayınca o satırın kesmesini değiştirir."""
+        blok = self.firstVisibleBlock()
+        ust = self.blockBoundingGeometry(blok).translated(
+            self.contentOffset()).top()
+        while blok.isValid():
+            alt = ust + self.blockBoundingRect(blok).height()
+            if ust <= y < alt:
+                self.kesme_degistir(blok)
+                return
+            blok = blok.next()
+            ust = alt
+
+    def kesme_satirlari(self):
+        """Kesme noktalı satır numaralarını (1 tabanlı) döndürür."""
+        satirlar = []
+        blok = self.document().firstBlock()
+        while blok.isValid():
+            if isinstance(blok.userData(), _KesmeVerisi):
+                satirlar.append(blok.blockNumber() + 1)
+            blok = blok.next()
+        return satirlar
+
+    def durak_goster(self, satir):
+        """Hata ayıklayıcının durduğu satırı vurgular (None: temizle)."""
+        self._durak_satiri = satir
+        if satir is not None:
+            blok = self.document().findBlockByNumber(satir - 1)
+            imlec = QTextCursor(blok)
+            self.setTextCursor(imlec)
+        self._aktif_satiri_vurgula()
+
     # --- satır numarası alanı -------------------------------------------
     def numara_genisligi(self):
         basamak = max(3, len(str(self.blockCount())))
-        return 16 + self.fontMetrics().horizontalAdvance("9") * basamak
+        return 26 + self.fontMetrics().horizontalAdvance("9") * basamak
 
     def _numara_genislik_guncelle(self):
         self.setViewportMargins(self.numara_genisligi(), 0, 0, 0)
@@ -136,11 +187,18 @@ class KodTREditor(QPlainTextEdit):
                     .translated(self.contentOffset()).top())
         alt = ust + round(self.blockBoundingRect(blok).height())
 
+        yukseklik = self.fontMetrics().height()
         while blok.isValid() and ust <= olay.rect().bottom():
             if blok.isVisible() and alt >= olay.rect().top():
+                if isinstance(blok.userData(), _KesmeVerisi):
+                    boyaci.setBrush(KESME_RENK)
+                    boyaci.setPen(Qt.PenStyle.NoPen)
+                    cap = yukseklik // 2
+                    boyaci.drawEllipse(6, ust + (yukseklik - cap) // 2,
+                                       cap, cap)
                 boyaci.setPen(NUMARA_YAZI)
                 boyaci.drawText(0, ust, self.numara_alani.width() - 8,
-                                self.fontMetrics().height(),
+                                yukseklik,
                                 Qt.AlignmentFlag.AlignRight, str(numara + 1))
             blok = blok.next()
             ust = alt
@@ -149,12 +207,25 @@ class KodTREditor(QPlainTextEdit):
 
     # --- aktif satır ----------------------------------------------------
     def _aktif_satiri_vurgula(self):
-        secim = QTextEdit.ExtraSelection()
-        secim.format.setBackground(AKTIF_SATIR)
-        secim.format.setProperty(QTextFormat.Property.FullWidthSelection, True)
-        secim.cursor = self.textCursor()
-        secim.cursor.clearSelection()
-        self.setExtraSelections([secim])
+        secimler = []
+        if self._durak_satiri is not None:
+            durak = QTextEdit.ExtraSelection()
+            durak.format.setBackground(DURAK_SATIR)
+            durak.format.setProperty(
+                QTextFormat.Property.FullWidthSelection, True)
+            blok = self.document().findBlockByNumber(self._durak_satiri - 1)
+            durak.cursor = QTextCursor(blok)
+            durak.cursor.clearSelection()
+            secimler.append(durak)
+        else:
+            secim = QTextEdit.ExtraSelection()
+            secim.format.setBackground(AKTIF_SATIR)
+            secim.format.setProperty(
+                QTextFormat.Property.FullWidthSelection, True)
+            secim.cursor = self.textCursor()
+            secim.cursor.clearSelection()
+            secimler.append(secim)
+        self.setExtraSelections(secimler)
 
     # --- otomatik tamamlama ---------------------------------------------
     def _kelime_oneki(self):

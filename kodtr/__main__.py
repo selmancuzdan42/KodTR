@@ -22,6 +22,7 @@ KULLANIM = __doc__
 
 _CALISTIR = {"çalıştır", "calistir", "run"}
 _CEVIR = {"çevir", "cevir"}
+_HATA_AYIKLA = {"hata-ayıkla", "hata-ayikla"}
 
 
 def _oku(yol):
@@ -43,7 +44,7 @@ def main(argv=None):
         for ad, (etiket, uzanti, _) in HEDEFLER.items():
             print(f"{ad:<12} {etiket:<12} {uzanti}")
         return 0
-    if komut not in _CALISTIR | _CEVIR:
+    if komut not in _CALISTIR | _CEVIR | _HATA_AYIKLA:
         # "python -m kodtr dosya.kodtr" kısayolu
         args.insert(0, komut)
         komut = "çalıştır"
@@ -51,12 +52,16 @@ def main(argv=None):
     goster = False
     cikti_yolu = None
     hedef = "python"
+    kapi = None
     dosyalar = []
     i = 0
     while i < len(args):
         arg = args[i]
         if arg in ("--göster", "--goster"):
             goster = True
+        elif arg == "--kapi":
+            i += 1
+            kapi = int(args[i])
         elif arg == "--hedef":
             i += 1
             if i >= len(args) or hedef_bul(args[i]) is None:
@@ -94,7 +99,14 @@ def main(argv=None):
         print(cevir(kaynak))
         print("# --- çıktı ---")
     try:
-        calistir(kaynak, dosya_adi=dosyalar[0])
+        if komut in _HATA_AYIKLA:
+            if kapi is None:
+                print("kodtr: hata-ayıkla için --kapi gerekli", file=sys.stderr)
+                return 1
+            from .hata_ayiklayici import calistir as ha_calistir
+            ha_calistir(kaynak, dosyalar[0], kapi)
+        else:
+            calistir(kaynak, dosya_adi=dosyalar[0])
     except KeyboardInterrupt:
         return 130
     except Exception as hata:
