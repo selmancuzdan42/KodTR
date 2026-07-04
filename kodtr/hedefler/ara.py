@@ -141,11 +141,13 @@ class IfadeCevirici:
     CAGRI_ADLARI = {}       # len -> Uzunluk, str -> String ...
     GIRDILER = {}           # int(input -> SayıAl, input -> MetinAl ...
     NOKTALI = {}            # ("random", "randint") -> RastgeleSayı ...
+    METOTLAR = {}           # nesne.append -> nesne.Add / nesne.push
     ICINDE_BICIMI = "{kap}.Contains({eleman})"
 
     def cevir(self, metin):
         toks = tokenize(metin)
         toks = self._noktalilari_daralt(toks)
+        toks = self._metotlari_cevir(toks)
         toks = self._girdileri_daralt(toks)
         toks = self._icinde_cevir(toks)
         parcalar = []
@@ -174,6 +176,18 @@ class IfadeCevirici:
             else:
                 yeni.append(toks[i])
                 i += 1
+        return yeni
+
+    def _metotlari_cevir(self, toks):
+        """Noktadan sonra gelen metot adını hedefe çevirir (.append -> .Add)."""
+        yeni = list(toks)
+        for i in range(1, len(yeni)):
+            if yeni[i][0] == "word" and yeni[i][1] in self.METOTLAR:
+                j = i - 1
+                while j >= 0 and yeni[j][0] == "space":
+                    j -= 1
+                if j >= 0 and yeni[j] == ("other", "."):
+                    yeni[i] = ("word", self.METOTLAR[yeni[i][1]])
         return yeni
 
     def _girdileri_daralt(self, toks):

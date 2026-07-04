@@ -125,6 +125,7 @@ kodunda da 5. satırdır. String ve yorum içlerine asla dokunulmaz.
 | `10'a kadar say:` | `for _ in range(1, 10 + 1):` |
 | `3 kere tekrarla:` | `for _ in range(3):` (`defa`/`kez` de olur) |
 | `eğer x meyveler içinde ise:` | `if x in meyveler:` |
+| `notlar'a 5 ekle` | `notlar.append(5)` (C#: `.Add`, JS: `.push`) |
 | `ekrana yaz "selam"` | `print("selam")` |
 | `her i için aralık(10):` | `for i in range(10):` |
 | `fonksiyon topla(a, b):` | `def topla(a, b):` |

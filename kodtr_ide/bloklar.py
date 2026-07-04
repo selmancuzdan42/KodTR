@@ -73,6 +73,12 @@ BLOKLAR = [
          'meyveler dizisini meyve ile dön:\n'
          '    yazdır meyve\n',
          "Liste oluşturur ve elemanlarını tek tek gezer"),
+        ("Listeye eleman ekle",
+         'sayılar = []\n'
+         '3 kere tekrarla:\n'
+         '    sayılar\'a kullanıcıdan sayı al("Sayı: ") ekle\n'
+         'yazdır sayılar\n',
+         "Boş listeye tek tek eleman ekler (liste'ye DEĞER ekle)"),
         ("Sonsuz döngü + dur",
          'sayaç = 0\n'
          'doğru iken:\n'

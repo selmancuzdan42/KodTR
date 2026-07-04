@@ -42,6 +42,7 @@ class _Ifade(ara.IfadeCevirici):
     GIRDILER = {"int(input": "SayıAl", "float(input": "OndalıkAl",
                 "input": "MetinAl"}
     NOKTALI = {("random", "randint"): "RastgeleSayı"}
+    METOTLAR = {"append": "Add"}
     ICINDE_BICIMI = "{kap}.Contains({eleman})"
 
     def cevir(self, metin):

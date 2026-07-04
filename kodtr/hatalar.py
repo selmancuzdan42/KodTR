@@ -27,6 +27,12 @@ _BLOK_SONLARI = ("ise", "iken", "tekrarla", "say", "dön", "don",
 
 def _sozdizimi_mesaji(hata, kodtr_satir=""):
     govde = kodtr_satir.split("#")[0].rstrip()
+    # liste'ye ekleme: "notlar'a X" yazılmış ama "ekle" unutulmuş
+    m_ekle = re.match(r"\s*([^\W\d]\w*)'\w+\s+\S", govde)
+    if m_ekle and not govde.rstrip().endswith("ekle"):
+        ad = m_ekle.group(1)
+        return (f"Listeye eleman eklemek istiyorsan satırı 'ekle' ile "
+                f"bitir: {ad}'a DEĞER ekle")
     m_art = re.search(r"([^\W\d]\w*)\s*(\+\+|--)", govde)
     if m_art:
         ad = m_art.group(1)

@@ -178,6 +178,37 @@ def _tekrarla_kalibi_isle(toks):
     return yeni
 
 
+def _ekle_kalibi_isle(toks):
+    """'notlar'a X ekle' -> 'notlar.append(X)'
+
+    Kalıp: <liste>'<ek> <ifade> ekle
+    <liste>'a / <liste>'e / <liste>'ye gibi yönelme eki olan bir "ekli"
+    token ile başlar, "ekle" ile biter. İfade (eklenecek değer) ikisinin
+    arasındaki her şeydir; içindeki KodTR kalıpları (kullanıcıdan sayı al
+    gibi) sonraki aşamalarda çevrilir.
+    """
+    m = _anlamli(toks)
+    if len(m) < 3 or toks[m[-1]] != ("word", "ekle"):
+        return toks
+    ilk = toks[m[0]]
+    if ilk[0] != "ekli":
+        return toks
+
+    liste = _taban(ilk)
+    ifade = toks[m[0] + 1:m[-1]]
+    while ifade and ifade[0][0] == "space":
+        ifade.pop(0)
+    while ifade and ifade[-1][0] == "space":
+        ifade.pop()
+    if not ifade:
+        return toks
+
+    yeni = toks[:m[0]]  # girinti
+    yeni += [("word", f"{liste}.append(")] + ifade + [("other", ")")]
+    yeni += toks[m[-1] + 1:]  # 'ekle' sonrası (yorum vb.)
+    return yeni
+
+
 def _icinde_kalibi_isle(toks):
     """'x meyveler içinde' -> 'x in meyveler'
 
@@ -321,6 +352,7 @@ def cevir(kaynak):
         satir = _dongu_kalibi_isle(satir)
         satir = _kadar_kalibi_isle(satir)
         satir = _tekrarla_kalibi_isle(satir)
+        satir = _ekle_kalibi_isle(satir)
         satir = _icinde_kalibi_isle(satir)
         satir = _sondaki_baglaci_isle(satir)
         satir = _kelimeleri_cevir(satir)

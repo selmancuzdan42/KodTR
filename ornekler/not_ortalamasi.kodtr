@@ -1,0 +1,12 @@
+# Not ortalaması — listeye ekleme ve gezinme örneği
+notlar = []
+
+5 kere tekrarla:
+    notlar'a kullanıcıdan sayı al("Not giriniz: ") ekle
+
+toplam = 0
+notlar dizisini n ile dön:
+    toplam = toplam + n
+
+ortalama = toplam / uzunluk(notlar)
+yazdır "Ortalama:", ortalama

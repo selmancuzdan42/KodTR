@@ -71,6 +71,7 @@ YAPI_KELIMELERI = {
     "kadar", "say",
     "kere", "defa", "kez", "tekrarla",
     "içinde", "icinde",
+    "ekle",
 }
 
 # ---------------------------------------------------------------------------
