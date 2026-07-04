@@ -1,8 +1,9 @@
 """JavaScript hedefi (Node.js).
 
-Girdi, Node'da satır satır senkron okunamadığından stdin baştan okunup
-satırlara bölünür (`metinAl` yardımcısı); çıktı `console.log` iledir.
-Yardımcı fonksiyonlar yalnızca kullanıldıklarında dosya başına eklenir.
+Girdi, stdin'den satır satır senkron okunur (`metinAl`); bu sayede hem
+klavyeden (IDE'de) hem borudan gelen girdi çalışır. Çıktı `console.log`
+iledir. Yardımcı fonksiyonlar yalnızca kullanıldıklarında dosya başına
+eklenir.
 """
 
 import re
@@ -10,11 +11,21 @@ import re
 from . import ara
 
 _YARDIMCILAR = {
+    # stdin'den bir satır senkron okur (klavye ve boru; Türkçe karakter güvenli)
     "metinAl": (
-        'const _girdiSatirlari = require("fs").readFileSync(0, "utf8").split("\\n");\n'
-        "let _girdiSira = 0;\n"
-        'function metinAl(mesaj = "") { process.stdout.write(mesaj);'
-        " return _girdiSatirlari[_girdiSira++]; }"),
+        'function metinAl(mesaj = "") {\n'
+        "  process.stdout.write(mesaj);\n"
+        '  const fs = require("fs");\n'
+        "  const bayt = Buffer.alloc(1), satir = [];\n"
+        "  while (true) {\n"
+        "    let n;\n"
+        "    try { n = fs.readSync(0, bayt, 0, 1); }\n"
+        '    catch (e) { if (e.code === "EAGAIN") continue; throw e; }\n'
+        "    if (n === 0 || bayt[0] === 10) break;\n"
+        "    satir.push(bayt[0]);\n"
+        "  }\n"
+        '  return Buffer.from(satir).toString("utf8");\n'
+        "}"),
     "sayıAl": ('function sayıAl(mesaj = "") { return parseInt(metinAl(mesaj)); }'),
     "ondalıkAl": ('function ondalıkAl(mesaj = "") { return Number(metinAl(mesaj)); }'),
     "uzunluk": ("function uzunluk(x) { return x.length; }"),

@@ -7,8 +7,10 @@ Yerleşim:
 
 Sağ panelin başlığındaki seçiciden hedef dil (Python / C# / JavaScript)
 seçilir; Türkçe kod yazıldıkça seçili dile çevirisi anlık görünür.
-Çalıştırma (F5) her zaman Python üzerinden yapılır. "Çeviriyi Dışa
-Aktar" her hedefi kendi uzantısıyla ayrı dosyaya yazar (.py/.cs/.js).
+Çalıştırma (F5) seçili hedef dilde yapılır: Python doğrudan, C# mcs+mono
+ile, JavaScript node ile (mono/node .deb ile otomatik kurulur). Kesme
+noktası varsa çalıştırma Python hata ayıklama kipine düşer. "Çeviriyi
+Dışa Aktar" her hedefi kendi uzantısıyla ayrı dosyaya yazar.
 """
 
 import re
@@ -68,6 +70,7 @@ class AnaPencere(QMainWindow):
         self.dosya = None          # açık dosyanın yolu (Path | None)
         self.surec = None          # çalışan QProcess
         self._gecici_py = None
+        self._temizlenecek = []    # program bitince silinecek geçici dosyalar
         self._hata_sunucu = None   # QTcpServer (hata ayıklama oturumu)
         self._hata_soket = None    # bağlı QTcpSocket
         self._hata_kipinde = False
@@ -470,56 +473,124 @@ class AnaPencere(QMainWindow):
         return self.kaydet()
 
     # ---------------------------------------------------------- çalıştır
+    def _gecici_yaz(self, icerik, uzanti):
+        """İçeriği geçici dosyaya yazar, yolunu döndürür (sonra silinir)."""
+        dosya = tempfile.NamedTemporaryFile(
+            mode="w", suffix=uzanti, prefix="kodtr_", delete=False,
+            encoding="utf-8")
+        dosya.write(icerik)
+        dosya.close()
+        self._temizlenecek.append(dosya.name)
+        return dosya.name
+
     def calistir(self):
         if self.surec is not None:
             self.statusBar().showMessage("Zaten çalışan bir program var", 3000)
             return
 
-        if self.hedef == "python":
-            self.python_gorunum.setPlainText(py_cevir(self.editor.toPlainText()))
-
-        # kaynak .kodtr olarak yazılır ve 'python -m kodtr' ile çalıştırılır;
-        # böylece Türkçe hata mesajları satır numarasıyla buraya düşer
-        self._gecici_py = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".kodtr", prefix="kodtr_", delete=False,
-            encoding="utf-8")
-        self._gecici_py.write(self.editor.toPlainText())
-        self._gecici_py.close()
-
+        kaynak = self.editor.toPlainText()
         kesmeler = self.editor.kesme_satirlari()
-        self._hata_kipinde = bool(kesmeler)
+        if self.hedef == "python":
+            self.python_gorunum.setPlainText(py_cevir(kaynak))
 
+        self._temizlenecek = []
         self.cikti.clear()
         self._yaz("— program başladı —\n", BILGI_RENK)
 
+        # ortak QProcess kurulumu
         ortam = QProcessEnvironment.systemEnvironment()
         paket_koku = str(Path(kodtr.__file__).parent.parent)
         mevcut = ortam.value("PYTHONPATH", "")
         ortam.insert("PYTHONPATH",
                      paket_koku + (":" + mevcut if mevcut else ""))
-
         self.surec = QProcess(self)
         self.surec.setProcessEnvironment(ortam)
         self.surec.readyReadStandardOutput.connect(self._cikti_oku)
         self.surec.readyReadStandardError.connect(self._hata_oku)
         self.surec.finished.connect(self._bitti)
 
+        # kesme noktası varsa: hata ayıklama yalnızca Python'da
+        self._hata_kipinde = bool(kesmeler) and self.hedef == "python"
+        if kesmeler and self.hedef != "python":
+            self._yaz("(Hata ayıklama Python'da yapılır; C#/JS için kesme "
+                      "noktaları yok sayıldı.)\n", BILGI_RENK)
+
+        etiket = HEDEFLER[self.hedef][0]
+        basladi = True
         if self._hata_kipinde:
-            self._hata_baslat(kesmeler, ortam)
-        else:
+            self._gecici_py = self._gecici_yaz(kaynak, ".kodtr")
+            self._hata_baslat_yol(kesmeler, self._gecici_py)
+            durum = "Hata ayıklanıyor..."
+        elif self.hedef == "python":
+            yol = self._gecici_yaz(kaynak, ".kodtr")
             self.surec.start(sys.executable,
-                             ["-u", "-m", "kodtr", "çalıştır",
-                              self._gecici_py.name])
+                             ["-u", "-m", "kodtr", "çalıştır", yol])
+            durum = "Çalışıyor... (Python)"
+        elif self.hedef == "csharp":
+            basladi = self._calistir_csharp(kaynak)
+            durum = "Çalışıyor... (C#)"
+        else:  # javascript
+            basladi = self._calistir_javascript(kaynak)
+            durum = "Çalışıyor... (JavaScript)"
+
+        if not basladi:
+            return  # araç yok / derleme hatası; _calistir_X UI'ı topladı
 
         self.girdi.setEnabled(True)
         self.girdi.setFocus()
         self.calistir_eylemi.setEnabled(False)
         self.durdur_eylemi.setEnabled(True)
-        self.statusBar().showMessage(
-            "Hata ayıklanıyor..." if self._hata_kipinde else "Çalışıyor...")
+        self.statusBar().showMessage(durum)
+
+    def _arac_yok(self, dil, paket):
+        """Gerekli çalıştırıcı bulunamadığında kullanıcıyı bilgilendirir."""
+        self._yaz(f"\n{dil} çalıştırmak için gerekli araç bulunamadı.\n"
+                  f"Kurmak için:  sudo apt install {paket}\n"
+                  f"(Şimdilik hedefi Python seçip çalıştırabilirsin.)\n",
+                  HATA_RENK)
+        self._calistirma_iptal()
+
+    def _calistirma_iptal(self):
+        """Program başlatılamadığında arayüzü normale döndürür."""
+        self.surec = None
+        for yol in self._temizlenecek:
+            Path(yol).unlink(missing_ok=True)
+        self._temizlenecek = []
+        self.calistir_eylemi.setEnabled(True)
+        self.durdur_eylemi.setEnabled(False)
+        self.statusBar().showMessage("Hazır")
+
+    def _calistir_csharp(self, kaynak):
+        import shutil
+        import subprocess
+        if not shutil.which("mcs") or not shutil.which("mono"):
+            self._arac_yok("C#", "mono-mcs")
+            return False
+        cs = self._gecici_yaz(hedef_cevir(kaynak, "csharp"), ".cs")
+        exe = cs[:-3] + ".exe"
+        self._temizlenecek.append(exe)
+        derleme = subprocess.run(["mcs", "-out:" + exe, cs],
+                                 capture_output=True, text=True)
+        if derleme.returncode != 0:
+            self._yaz((derleme.stderr or derleme.stdout) +
+                      "\n— C# derleme başarısız —\n", HATA_RENK)
+            self._calistirma_iptal()
+            return False
+        self.surec.start("mono", [exe])
+        return True
+
+    def _calistir_javascript(self, kaynak):
+        import shutil
+        calistirici = shutil.which("node") or shutil.which("nodejs")
+        if not calistirici:
+            self._arac_yok("JavaScript", "nodejs")
+            return False
+        js = self._gecici_yaz(hedef_cevir(kaynak, "javascript"), ".js")
+        self.surec.start(calistirici, [js])
+        return True
 
     # -------------------------------------------------- hata ayıklama
-    def _hata_baslat(self, kesmeler, ortam):
+    def _hata_baslat_yol(self, kesmeler, yol):
         """TCP sunucusunu açar ve programı hata-ayıkla kipinde başlatır."""
         self._kesmeler = kesmeler
         self._hata_sunucu = QTcpServer(self)
@@ -532,7 +603,7 @@ class AnaPencere(QMainWindow):
         self.devam_eylemi.setEnabled(True)
         self.surec.start(sys.executable,
                          ["-u", "-m", "kodtr", "hata-ayıkla",
-                          self._gecici_py.name, "--kapi", str(kapi)])
+                          yol, "--kapi", str(kapi)])
 
     def _hata_baglandi(self):
         self._hata_soket = self._hata_sunucu.nextPendingConnection()
@@ -613,9 +684,10 @@ class AnaPencere(QMainWindow):
         self.calistir_eylemi.setEnabled(True)
         self.durdur_eylemi.setEnabled(False)
         self.statusBar().showMessage("Hazır")
-        if self._gecici_py:
-            Path(self._gecici_py.name).unlink(missing_ok=True)
-            self._gecici_py = None
+        for yol in getattr(self, "_temizlenecek", []):
+            Path(yol).unlink(missing_ok=True)
+        self._temizlenecek = []
+        self._gecici_py = None
         self.surec = None
         self._hata_temizle()
 
@@ -639,7 +711,7 @@ class AnaPencere(QMainWindow):
         QMessageBox.about(
             self, "KodTR IDE Hakkında",
             f"<b>KodTR IDE {kodtr.__version__}</b><br>"
-            "Türkçe yazılan, Python'a çevrilen mini programlama dili.<br><br>"
+            "Türkçe yazılan kodları, Python, C# , Javascript'e  çevrilen mini programlama dili.<br><br>"
             "Selman  Farisi CÜZDAN— github.com/selmancuzdan42")
 
     def closeEvent(self, olay):

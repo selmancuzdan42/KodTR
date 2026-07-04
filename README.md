@@ -34,7 +34,7 @@ değişkenlerin güncel değerlerini görebilirsin:
 
 ```
 ./paketle.sh
-sudo apt install ./dist/kodtr_0.4.0_all.deb
+sudo apt install ./dist/kodtr_0.5.0_all.deb
 ```
 
 Kurulum sonrası:
@@ -59,15 +59,17 @@ Gereksinim: Python 3.9+ ve PyQt6 (`python3-pyqt6`).
 
 | Hedef | CLI adı | Uzantı | Çalıştırma |
 |---|---|---|---|
-| Python | `python`, `py` | `.py` | IDE içinden F5 / `python3` |
-| C# | `csharp`, `cs`, `c#` | `.cs` | `mcs dosya.cs && mono dosya.exe` veya `dotnet` |
-| JavaScript | `javascript`, `js` | `.js` | `node dosya.js` (girdi stdin'den okunur) |
+| Python | `python`, `py` | `.py` | IDE'de F5 / `python3` |
+| C# | `csharp`, `cs`, `c#` | `.cs` | IDE'de F5 (mcs+mono) / `mcs x.cs && mono x.exe` |
+| JavaScript | `javascript`, `js` | `.js` | IDE'de F5 (node) / `node x.js` |
 
 IDE'de sağ paneldeki **HEDEF KOD** seçicisinden dil seçilir; Türkçe kod
-yazıldıkça seçili dile çevirisi anlık görünür. **Dosya → Çeviriyi Dışa
-Aktar** (Ctrl+E) her hedefi kendi uzantısıyla ayrı dosyaya yazar —
-transkriptler birbirine karışmaz. F5 çalıştırması her zaman Python
-üzerinden yapılır.
+yazıldıkça seçili dile çevirisi anlık görünür. **F5 seçili hedef dilde
+çalıştırır**: Python doğrudan, C# `mcs`+`mono` ile, JavaScript `node`
+ile. Bu araçlar `.deb` kurulumunda `apt` tarafından otomatik gelir;
+yoksa çıktı panelinde kurulum komutu gösterilir. **Dosya → Çeviriyi
+Dışa Aktar** (Ctrl+E) her hedefi kendi uzantısıyla ayrı dosyaya yazar —
+transkriptler birbirine karışmaz.
 
 C# ve JavaScript çıktılarında girdi/yazdırma için Türkçe adlı küçük
 yardımcı fonksiyonlar (`SayıAl`, `metinAl` gibi) yalnızca
@@ -100,9 +102,10 @@ Satır numarasının soluna tıklayarak ya da **F2** ile kesme noktası
 konur (kırmızı nokta). **F5**'e basınca program o satıra gelince durur;
 o an **Değişkenler** panelinde tüm değişkenlerin güncel değeri görünür.
 Oradan **F10** ile satır satır ilerler, **F8** ile bir sonraki kesme
-noktasına kadar devam edersin. Kesme noktası yoksa F5 programı normal
-çalıştırır. Bu, döngü ve değişken kavramlarını tahtada göstermenin en
-kolay yoludur.
+noktasına kadar devam edersin. Bu, döngü ve değişken kavramlarını
+tahtada göstermenin en kolay yoludur. Hata ayıklama Python üzerinden
+yapılır; C#/JS seçiliyken kesme noktası koyarsan çalıştırma otomatik
+Python hata ayıklama kipine geçer.
 
 ## Dil rehberi
 
@@ -174,6 +177,6 @@ Yeni hedef dil eklemek: `kodtr/hedefler/` altına modül yaz,
 
 ## Yol haritası
 
-- [ ] Hata mesajlarının Türkçeleştirilmesi (traceback çevirisi)
-- [ ] IDE: otomatik tamamlama, kelime ipuçları
-- [ ] C# / JS çıktısını IDE içinden çalıştırma (mcs/node varsa)
+- [x] Türkçe hata mesajları · otomatik tamamlama · hata ayıklayıcı
+- [x] C# / JS'i IDE içinden F5 ile çalıştırma
+- [ ] Daha fazla hazır örnek ve alıştırma modu

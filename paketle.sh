@@ -7,7 +7,7 @@
 # Çıktı: dist/kodtr_<sürüm>_all.deb
 set -eu
 
-SURUM="0.4.0"
+SURUM="0.5.0"
 KOK="$(cd "$(dirname "$0")" && pwd)"
 DIST="$KOK/dist"
 KURULUM="$DIST/kodtr_${SURUM}_all"
@@ -52,13 +52,15 @@ Section: devel
 Priority: optional
 Architecture: all
 Depends: python3 (>= 3.9), python3-pyqt6
-Maintainer: Selman <selmancuzdan42@users.noreply.github.com>
+Recommends: mono-mcs, nodejs
+Maintainer: Selman <selmanfarisicuzdan@gmail.com>
 Homepage: https://github.com/selmancuzdan42
-Description: Turkce yazilan, Python'a cevrilen programlama dili
+Description: Turkce yazilan, Python/C#/JavaScript'e cevrilen programlama dili
  KodTR, programlamaya yeni baslayanlar icin Turkce anahtar
- kelimelerle kod yazmayi saglar; kod otomatik olarak Python'a
- cevrilip calistirilir. Paket, komut satiri araci (kodtr) ve
- gelistirme ortamini (kodtr-ide) icerir.
+ kelimelerle kod yazmayi saglar; kod otomatik olarak Python, C# veya
+ JavaScript'e cevrilip calistirilir. Paket, komut satiri araci (kodtr)
+ ve gelistirme ortamini (kodtr-ide) icerir. C# calistirmak icin
+ mono-mcs, JavaScript icin nodejs onerilir (apt bunlari otomatik kurar).
 EOF
 
 # -------------------------------------------------------------------- build

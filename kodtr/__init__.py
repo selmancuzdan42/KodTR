@@ -2,5 +2,5 @@
 
 from .cevirici import cevir, calistir
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 __all__ = ["cevir", "calistir"]
