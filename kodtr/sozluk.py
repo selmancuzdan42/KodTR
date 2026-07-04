@@ -52,6 +52,7 @@ KELIMELER = {
     "enbüyük": "max", "enbuyuk": "max",
     "enküçük": "min", "enkucuk": "min",
     "sırala": "sorted", "sirala": "sorted",
+    "rastgele": "random.randint",   # rastgele(1, 10) -> iki uç da dahil
 }
 
 # ---------------------------------------------------------------------------

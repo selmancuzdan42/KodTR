@@ -332,8 +332,12 @@ def cevir(kaynak):
 
 
 def calistir(kaynak, dosya_adi="<kodtr>"):
-    """KodTR kaynağını çevirir ve çalıştırır."""
+    """KodTR kaynağını çevirir ve çalıştırır.
+
+    'random' modülü hazır verilir; böylece satır satır 1:1 eşleşmeyi
+    bozacak bir import satırı eklemeye gerek kalmaz (rastgele kalıbı).
+    """
     py_kaynak = cevir(kaynak)
     kod = compile(py_kaynak, dosya_adi, "exec")
-    exec(kod, {"__name__": "__main__"})
+    exec(kod, {"__name__": "__main__", "random": __import__("random")})
     return py_kaynak

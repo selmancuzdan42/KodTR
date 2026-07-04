@@ -16,7 +16,7 @@ from kodtr.sozluk import KELIMELER, OBEKLER, YAPI_KELIMELERI
 # Python karşılığına göre kategori ayrımı
 _SABITLER = {"True", "False", "None"}
 _GOMULULER = {"print", "input", "range", "len", "int", "float", "str",
-              "abs", "round", "max", "min", "sorted"}
+              "abs", "round", "max", "min", "sorted", "random.randint"}
 
 RENKLER = {
     "deyim":   QColor("#c678dd"),   # eğer, iken, fonksiyon...
@@ -110,7 +110,8 @@ _HEDEF_KELIMELERI = {
          "new", "int", "double", "string", "bool", "params", "is"],
         ["true", "false", "null"],
         ["Console", "WriteLine", "Write", "ReadLine", "Math", "Convert",
-         "List", "SayıAl", "OndalıkAl", "MetinAl", "Yazdır", "Uzunluk"],
+         "List", "Random", "SayıAl", "OndalıkAl", "MetinAl", "Yazdır",
+         "Uzunluk", "RastgeleSayı"],
     ),
     "javascript": (
         ["function", "let", "const", "var", "if", "else", "while", "for",
@@ -118,7 +119,8 @@ _HEDEF_KELIMELERI = {
          "require"],
         ["true", "false", "null", "undefined"],
         ["console", "log", "Math", "Number", "String", "parseInt",
-         "process", "sayıAl", "ondalıkAl", "metinAl", "uzunluk"],
+         "process", "sayıAl", "ondalıkAl", "metinAl", "uzunluk",
+         "rastgeleSayı"],
     ),
 }
 

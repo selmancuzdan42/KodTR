@@ -1,4 +1,6 @@
-# KodTR
+<p align="center">
+  <img src="gorseller/banner.png" alt="KodTR" width="560">
+</p>
 
 Türkçe yazılan mini programlama dili — **Python, C# ve JavaScript**
 hedeflerine çevrilir. IDE'si ve komut satırı aracıyla birlikte gelir;
@@ -27,7 +29,7 @@ Hata mesajları Türkçedir, hatalı satırı gösterir ve benzer ad önerir:
 
 ```
 ./paketle.sh
-sudo apt install ./dist/kodtr_0.2.0_all.deb
+sudo apt install ./dist/kodtr_0.3.0_all.deb
 ```
 
 Kurulum sonrası:
@@ -115,6 +117,7 @@ kodunda da 5. satırdır. String ve yorum içlerine asla dokunulmaz.
 | `dur` / `devam et` / `geç` | `break` / `continue` / `pass` |
 | `ve` / `veya` / `değil` | `and` / `or` / `not` |
 | `doğru` / `yanlış` / `hiçbiri` | `True` / `False` / `None` |
+| `rastgele(1, 10)` | `random.randint(1, 10)` (iki uç dahil) |
 | `uzunluk`, `tamsayı`, `ondalık`, `metin`, `mutlak`, `yuvarla`, `enbüyük`, `enküçük`, `sırala` | `len`, `int`, `float`, `str`, `abs`, `round`, `max`, `min`, `sorted` |
 
 Kurallar:

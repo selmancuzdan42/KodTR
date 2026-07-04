@@ -16,8 +16,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from PyQt6.QtCore import QProcess, QProcessEnvironment, Qt, QTimer
-from PyQt6.QtGui import (QAction, QColor, QFontDatabase, QIcon, QKeySequence,
+from PyQt6.QtCore import QProcess, QProcessEnvironment, QSize, Qt, QTimer
+from PyQt6.QtGui import (QAction, QColor, QIcon, QKeySequence,
                          QTextCharFormat, QTextCursor)
 from PyQt6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel,
                              QLineEdit, QMainWindow, QMessageBox,
@@ -29,7 +29,7 @@ from kodtr.cevirici import cevir as py_cevir
 from kodtr.hedefler import HEDEFLER, cevir as hedef_cevir
 
 from .bloklar import BLOKLAR
-from .editor import KodTREditor
+from .editor import KodTREditor, kod_yazi_tipi
 from .vurgulayici import HedefVurgulayici
 
 SABLON = '''\
@@ -45,10 +45,6 @@ HATA_RENK = QColor("#e06c75")
 GIRDI_RENK = QColor("#61afef")
 BILGI_RENK = QColor("#98c379")
 
-ETIKET_STIL = ("QLabel { background-color: #21252b; color: #7f848e;"
-               " padding: 4px 8px; font-weight: bold; }")
-
-
 def _baslikli(baslik, parca):
     """Bir bileşenin üstüne ince başlık şeridi ekler."""
     kutu = QWidget()
@@ -56,7 +52,7 @@ def _baslikli(baslik, parca):
     yerlesim.setContentsMargins(0, 0, 0, 0)
     yerlesim.setSpacing(0)
     etiket = QLabel(baslik)
-    etiket.setStyleSheet(ETIKET_STIL)
+    etiket.setObjectName("panelBaslik")
     yerlesim.addWidget(etiket)
     yerlesim.addWidget(parca)
     return kutu
@@ -81,12 +77,13 @@ class AnaPencere(QMainWindow):
     # ------------------------------------------------------------------ UI
     def _arayuzu_kur(self):
         self.resize(1280, 760)
-        ikon = Path(__file__).with_name("kodtr.svg")
-        if ikon.exists():
-            self.setWindowIcon(QIcon(str(ikon)))
+        for ikon_adi in ("kodtr.png", "kodtr.svg"):
+            ikon = Path(__file__).with_name(ikon_adi)
+            if ikon.exists():
+                self.setWindowIcon(QIcon(str(ikon)))
+                break
 
-        sabit_yazi = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-        sabit_yazi.setPointSize(11)
+        sabit_yazi = kod_yazi_tipi(11)
 
         # --- Türkçe kod editörü
         self.editor = KodTREditor()
@@ -113,16 +110,11 @@ class AnaPencere(QMainWindow):
         self.hedef_secici = QComboBox()
         for ad, (etiket, _uzanti, _fn) in HEDEFLER.items():
             self.hedef_secici.addItem(etiket, ad)
-        self.hedef_secici.setStyleSheet(
-            "QComboBox { background-color: #2c313a; color: #abb2bf;"
-            " border: 1px solid #3b4048; padding: 1px 8px; }")
         self.hedef_secici.currentIndexChanged.connect(self._hedef_degisti)
 
         # --- kod blokları menüsü
         self.blok_agaci = QTreeWidget()
         self.blok_agaci.setHeaderHidden(True)
-        self.blok_agaci.setStyleSheet(
-            "QTreeWidget { background-color: #21252b; color: #abb2bf; border: none; }")
         for kategori, bloklar in BLOKLAR:
             dal = QTreeWidgetItem([kategori])
             dal.setFlags(dal.flags() & ~Qt.ItemFlag.ItemIsSelectable)
@@ -162,11 +154,11 @@ class AnaPencere(QMainWindow):
 
         # --- hedef paneli: başlık şeridi + dil seçici + kod görünümü
         hedef_baslik = QWidget()
-        hedef_baslik.setStyleSheet("background-color: #21252b;")
         hb = QHBoxLayout(hedef_baslik)
         hb.setContentsMargins(8, 2, 8, 2)
         hedef_etiket = QLabel("HEDEF KOD")
-        hedef_etiket.setStyleSheet("color: #7f848e; font-weight: bold;")
+        hedef_etiket.setObjectName("panelBaslik")
+        hedef_etiket.setStyleSheet("border-bottom: none;")
         hb.addWidget(hedef_etiket)
         hb.addStretch()
         hb.addWidget(self.hedef_secici)
@@ -203,6 +195,9 @@ class AnaPencere(QMainWindow):
     def _eylemleri_kur(self):
         arac_cubugu = self.addToolBar("Araçlar")
         arac_cubugu.setMovable(False)
+        arac_cubugu.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        arac_cubugu.setIconSize(QSize(18, 18))
         menu = self.menuBar()
         dosya_menu = menu.addMenu("&Dosya")
         calistir_menu = menu.addMenu("&Çalıştır")

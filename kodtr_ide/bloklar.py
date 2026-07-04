@@ -24,6 +24,9 @@ BLOKLAR = [
         ("Kullanıcıdan sayı al",
          'sayı{n} = kullanıcıdan sayı al("Bir sayı gir: ")\n',
          "Kullanıcıya soru sorar, cevabı sayı olarak alır"),
+        ("Rastgele sayı",
+         'sayı{n} = rastgele(1, 10)\n',
+         "1 ile 10 arasında (ikisi de dahil) rastgele bir sayı üretir"),
     ]),
     ("Karar", [
         ("Eğer",

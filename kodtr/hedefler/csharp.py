@@ -22,6 +22,9 @@ _YARDIMCILAR = {
                '    { Console.WriteLine(string.Join(" ", p)); }'),
     "Uzunluk": ("    static int Uzunluk(dynamic x)\n"
                 "    { return x is string s ? s.Length : (int)x.Count; }"),
+    "RastgeleSayı": ("    static Random _rastgele = new Random();\n"
+                     "    static int RastgeleSayı(int a, int b)\n"
+                     "    { return _rastgele.Next(a, b + 1); }"),
 }
 
 
@@ -38,6 +41,7 @@ class _Ifade(ara.IfadeCevirici):
     }
     GIRDILER = {"int(input": "SayıAl", "float(input": "OndalıkAl",
                 "input": "MetinAl"}
+    NOKTALI = {("random", "randint"): "RastgeleSayı"}
     ICINDE_BICIMI = "{kap}.Contains({eleman})"
 
     def cevir(self, metin):

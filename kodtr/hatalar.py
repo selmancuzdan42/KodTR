@@ -27,6 +27,12 @@ _BLOK_SONLARI = ("ise", "iken", "tekrarla", "say", "dön", "don",
 
 def _sozdizimi_mesaji(hata, kodtr_satir=""):
     govde = kodtr_satir.split("#")[0].rstrip()
+    m_art = re.search(r"([^\W\d]\w*)\s*(\+\+|--)", govde)
+    if m_art:
+        ad = m_art.group(1)
+        islem = "+ 1" if m_art.group(2) == "++" else "- 1"
+        return (f"KodTR'de '++' ve '--' işleçleri yok (bunlar C#/JavaScript "
+                f"yazımı). Şöyle yaz: {ad} = {ad} {islem}")
     if (govde and not govde.endswith(":")
             and govde.split()[-1] in _BLOK_SONLARI):
         return (f"Satırın sonunda ':' eksik. Blok başlatan satırlar "

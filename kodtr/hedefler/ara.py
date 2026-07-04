@@ -140,10 +140,12 @@ class IfadeCevirici:
     KELIMELER = {}          # True -> true, and -> && ...
     CAGRI_ADLARI = {}       # len -> Uzunluk, str -> String ...
     GIRDILER = {}           # int(input -> SayıAl, input -> MetinAl ...
+    NOKTALI = {}            # ("random", "randint") -> RastgeleSayı ...
     ICINDE_BICIMI = "{kap}.Contains({eleman})"
 
     def cevir(self, metin):
         toks = tokenize(metin)
+        toks = self._noktalilari_daralt(toks)
         toks = self._girdileri_daralt(toks)
         toks = self._icinde_cevir(toks)
         parcalar = []
@@ -156,6 +158,23 @@ class IfadeCevirici:
                 t = self._noktalama_cevir(t)
             parcalar.append(t)
         return "".join(parcalar)
+
+    def _noktalilari_daralt(self, toks):
+        """modul.ad çiftini hedefteki tek isme çevirir (random.randint)."""
+        yeni = []
+        i = 0
+        while i < len(toks):
+            if (toks[i][0] == "word" and i + 2 < len(toks)
+                    and toks[i + 1] == ("other", ".")
+                    and toks[i + 2][0] == "word"
+                    and (toks[i][1], toks[i + 2][1]) in self.NOKTALI):
+                yeni.append(
+                    ("word", self.NOKTALI[(toks[i][1], toks[i + 2][1])]))
+                i += 3
+            else:
+                yeni.append(toks[i])
+                i += 1
+        return yeni
 
     def _girdileri_daralt(self, toks):
         """int(input(X)) -> SayıAl(X) vb.; iç içe parantezleri söker."""

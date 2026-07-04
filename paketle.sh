@@ -7,7 +7,7 @@
 # Çıktı: dist/kodtr_<sürüm>_all.deb
 set -eu
 
-SURUM="0.2.0"
+SURUM="0.3.0"
 KOK="$(cd "$(dirname "$0")" && pwd)"
 DIST="$KOK/dist"
 KURULUM="$DIST/kodtr_${SURUM}_all"
@@ -20,14 +20,14 @@ mkdir -p "$KURULUM/DEBIAN" \
          "$KURULUM/usr/share/kodtr" \
          "$KURULUM/usr/bin" \
          "$KURULUM/usr/share/applications" \
-         "$KURULUM/usr/share/icons/hicolor/scalable/apps" \
+         "$KURULUM/usr/share/icons/hicolor/256x256/apps" \
          "$KURULUM/usr/share/doc/kodtr/ornekler"
 
 cp -r "$KOK/kodtr" "$KOK/kodtr_ide" "$KURULUM/usr/share/kodtr/"
 find "$KURULUM/usr/share/kodtr" -name "__pycache__" -type d -exec rm -rf {} +
 
 cp "$KOK/veri/kodtr-ide.desktop" "$KURULUM/usr/share/applications/"
-cp "$KOK/kodtr_ide/kodtr.svg" "$KURULUM/usr/share/icons/hicolor/scalable/apps/"
+cp "$KOK/kodtr_ide/kodtr.png" "$KURULUM/usr/share/icons/hicolor/256x256/apps/"
 cp "$KOK/ornekler/"*.kodtr "$KURULUM/usr/share/doc/kodtr/ornekler/"
 cp "$KOK/README.md" "$KURULUM/usr/share/doc/kodtr/" 2>/dev/null || true
 

@@ -18,6 +18,8 @@ _YARDIMCILAR = {
     "sayıAl": ('function sayıAl(mesaj = "") { return parseInt(metinAl(mesaj)); }'),
     "ondalıkAl": ('function ondalıkAl(mesaj = "") { return Number(metinAl(mesaj)); }'),
     "uzunluk": ("function uzunluk(x) { return x.length; }"),
+    "rastgeleSayı": ("function rastgeleSayı(a, b) "
+                     "{ return Math.floor(Math.random() * (b - a + 1)) + a; }"),
 }
 
 # yardımcının ihtiyaç duyduğu diğer yardımcılar
@@ -37,6 +39,7 @@ class _Ifade(ara.IfadeCevirici):
     }
     GIRDILER = {"int(input": "sayıAl", "float(input": "ondalıkAl",
                 "input": "metinAl"}
+    NOKTALI = {("random", "randint"): "rastgeleSayı"}
     ICINDE_BICIMI = "{kap}.includes({eleman})"
 
     def _string_cevir(self, t):

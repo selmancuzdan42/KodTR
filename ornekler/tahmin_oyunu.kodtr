@@ -1,5 +1,5 @@
-# Sayı tahmin oyunu — while, if/elif/else örneği
-hedef = 7
+# Sayı tahmin oyunu — rastgele, while, if/elif/else örneği
+hedef = rastgele(1, 10)
 tahmin = 0
 
 tahmin != hedef iken:
